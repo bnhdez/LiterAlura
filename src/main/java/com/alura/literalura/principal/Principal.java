@@ -111,6 +111,25 @@ public class Principal {
     }
 
     private void mostrarLibrosRegistrados() {
+        try {
+            libros = libroRepository.findAll();
+            if (libros.isEmpty()) {
+                System.out.println("No hay libros registrados...");
+                System.out.println("Presione Enter para continuar...");
+                teclado.nextLine();
+            } else {
+                libros.forEach(l -> {
+                    System.out.printf("""
+                            Libro: %s
+                            Autor: %s
+                            Idioma: %s
+                            Descargas: %s
+                            %n""", l.getTitle(), l.getAuthor(), l.getLanguage(), l.getDownload_count().toString());
+                });
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void mostrarAutoresRegistrados() {
