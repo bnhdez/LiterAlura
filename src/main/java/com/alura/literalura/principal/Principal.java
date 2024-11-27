@@ -205,5 +205,61 @@ public class Principal {
     }
 
     private void mostrarPorIdiomas() {
+        System.out.println("""
+            Seleccione un idioma para mostrar los libros registrados:
+            1: Inglés (en)
+            2: Español (es)
+            3: Francés (fr)
+            4: Alemán (de)
+            5: Italiano (it)
+            6: Otro idioma
+            """);
+        System.out.print("> ");
+        int opcion = teclado.nextInt();
+        teclado.nextLine(); // Limpiar el buffer
+
+        String idioma = null;
+
+        // Mapear la opción seleccionada a un código de idioma
+        switch (opcion) {
+            case 1 -> idioma = "en";
+            case 2 -> idioma = "es";
+            case 3 -> idioma = "fr";
+            case 4 -> idioma = "de";
+            case 5 -> idioma = "it";
+            case 6 -> {
+                System.out.println("Ingrese el código del idioma (ISO 639-1, por ejemplo: en, es, fr):");
+                System.out.print("> ");
+                idioma = teclado.nextLine();
+            }
+            default -> {
+                System.out.println("Opción inválida. Volviendo al menú principal...");
+                return;
+            }
+        }
+
+        try {
+            // Consultar libros por idioma en la base de datos
+            List<Libro> librosPorIdioma = libroRepository.findByLanguage(idioma);
+
+            // Mostrar resultados
+            if (librosPorIdioma.isEmpty()) {
+                System.out.println("No se encontraron libros registrados en el idioma seleccionado (" + idioma + ").");
+            } else {
+                System.out.println("Libros disponibles en el idioma seleccionado (" + idioma + "):");
+                librosPorIdioma.forEach(libro -> System.out.printf("""
+                    Título: %s
+                    Autor: %s
+                    Idioma: %s
+                    Descargas: %d
+                    %n""",
+                        libro.getTitle(),
+                        libro.getAuthor(),
+                        libro.getLanguage(),
+                        libro.getDownload_count()));
+            }
+        } catch (Exception e) {
+            System.out.println("Ocurrió un error al consultar los libros: " + e.getMessage());
+        }
     }
 }
