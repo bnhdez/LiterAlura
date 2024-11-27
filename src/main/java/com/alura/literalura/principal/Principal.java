@@ -95,6 +95,24 @@ public class Principal {
                     // Convertir cada resultado individualmente a DatosLibro
                     var datosLibroJson = conversor.obtenerDatos(new ObjectMapper().writeValueAsString(result), DatosLibro.class);
                     Libro libro = new Libro(datosLibroJson);
+
+                    // Guardar los autores asociados al libro
+                    for (DatosAutor datosAutor : datosLibroJson.authors()) {
+                        Autor autor = new Autor(datosAutor);
+                        try {
+                            // Verificar si el autor ya existe
+                            if (!autorRepository.existsByName(autor.getName())) {
+                                autorRepository.save(autor);
+                                System.out.println("Autor guardado correctamente: " + autor.getName());
+                            } else {
+                                System.out.println("El autor ya existe en la base de datos: " + autor.getName());
+                            }
+                        } catch (Exception e) {
+                            System.out.println("Error al guardar el autor: " + e.getMessage());
+                        }
+                    }
+
+                    // Guardar el libro en la base de datos
                     try {
                         libroRepository.save(libro);
                         System.out.println("Libro guardado correctamente: " + libro.getTitle());
@@ -133,6 +151,26 @@ public class Principal {
     }
 
     private void mostrarAutoresRegistrados() {
+        try {
+            autores = autorRepository.findAll();
+            if (autores.isEmpty()) {
+                System.out.println("No hay libros registrados...");
+                System.out.println("Presione Enter para continuar...");
+                teclado.nextLine();
+            } else {
+                autores.forEach(a -> {
+                    System.out.printf("""
+                            Autor: %s
+                            Nacimiento: %s
+                            Fallecimiento: %s
+                            %n""",
+                            a.getName(), a.getBirth_day() != null ? a.getBirth_day().toString() : "No se encuentra fecha de nacimiento",
+                            a.getDeath_day() != null ? a.getDeath_day().toString() : "En la actualidad");
+                });
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void mostrarAutoresPorFecha() {
