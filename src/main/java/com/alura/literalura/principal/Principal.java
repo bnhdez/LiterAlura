@@ -9,13 +9,11 @@ import com.alura.literalura.repository.LibroRepository;
 import com.alura.literalura.service.ConsumoAPI;
 import com.alura.literalura.service.ConvierteDatos;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.data.domain.PageRequest;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Scanner;
+import java.util.*;
 
 public class Principal {
     private Scanner teclado = new Scanner(System.in);
@@ -38,39 +36,37 @@ public class Principal {
         var opcion = -1;
         while (opcion != 0) {
             var menu = """
-                    1 - Buscar Libro por nombre 
-                    2 - Mostrar Libros registrados
-                    3 - Mostrar autores registrados
-                    4 - Mostrar autores vivos por años
-                    5 - Mostrar por idiomas
-                                  
-                    0 - Salir
-                    """;
+                ======= Menú Principal =======
+                1 - Buscar Libro por nombre
+                2 - Mostrar Libros registrados
+                3 - Mostrar autores registrados
+                4 - Mostrar autores vivos por años
+                5 - Mostrar por idiomas
+                6 - Generar estadísticas de libros
+                7 - Mostrar Top 10 libros más descargados
+                8 - Buscar autor por nombre
+                9 - Listar autores por año de nacimiento o fallecimiento
+                
+                0 - Salir
+                =============================
+                """;
             System.out.println(menu);
+            System.out.print("> ");
             opcion = teclado.nextInt();
-            teclado.nextLine();
+            teclado.nextLine(); // Limpiar el buffer
 
             switch (opcion) {
-                case 1:
-                    buscarLibroPorNombre();
-                    break;
-                case 2:
-                    mostrarLibrosRegistrados();
-                    break;
-                case 3:
-                    mostrarAutoresRegistrados();
-                    break;
-                case 4:
-                    mostrarAutoresPorFecha();
-                    break;
-                case 5:
-                    mostrarPorIdiomas();
-                    break;
-                case 0:
-                    System.out.println("Cerrando la aplicación...");
-                    break;
-                default:
-                    System.out.println("Opción inválida");
+                case 1 -> buscarLibroPorNombre();
+                case 2 -> mostrarLibrosRegistrados();
+                case 3 -> mostrarAutoresRegistrados();
+                case 4 -> mostrarAutoresPorFecha();
+                case 5 -> mostrarPorIdiomas();
+                case 6 -> mostrarEstadisticasLibros();
+                case 7 -> mostrarTopLibrosMasDescargados();
+                case 8 -> buscarAutorPorNombre();
+                case 9 -> listarAutoresPorAtributo();
+                case 0 -> System.out.println("Cerrando la aplicación...");
+                default -> System.out.println("Opción inválida. Intente de nuevo.");
             }
         }
     }
@@ -260,6 +256,164 @@ public class Principal {
             }
         } catch (Exception e) {
             System.out.println("Ocurrió un error al consultar los libros: " + e.getMessage());
+        }
+    }
+
+    private void mostrarEstadisticasLibros() {
+        try {
+            // Obtener todos los libros de la base de datos
+            List<Libro> libros = libroRepository.findAll();
+
+            if (libros.isEmpty()) {
+                System.out.println("No hay libros registrados para generar estadísticas.");
+                return;
+            }
+
+            // Generar estadísticas con streams
+            DoubleSummaryStatistics stats = libros.stream()
+                    .mapToDouble(Libro::getDownload_count)
+                    .summaryStatistics();
+
+            // Mostrar estadísticas
+            System.out.println("Estadísticas de descargas de libros:");
+            System.out.printf("Número total de descargas: %.0f%n", stats.getSum());
+            System.out.printf("Promedio de descargas: %.2f%n", stats.getAverage());
+            System.out.printf("Máximo número de descargas: %.0f%n", stats.getMax());
+            System.out.printf("Mínimo número de descargas: %.0f%n", stats.getMin());
+        } catch (Exception e) {
+            System.out.println("Ocurrió un error al generar las estadísticas: " + e.getMessage());
+        }
+    }
+
+    private void mostrarTopLibrosMasDescargados() {
+        try {
+            // Consultar los 10 libros más descargados
+            List<Libro> topLibros = libroRepository.findTop10ByOrderByDownloadCountDesc(PageRequest.of(0, 10));
+
+            if (topLibros.isEmpty()) {
+                System.out.println("No hay libros registrados.");
+                return;
+            }
+
+            // Mostrar el top 10
+            System.out.println("Top 10 libros más descargados:");
+            topLibros.forEach(libro -> System.out.printf("""
+                Título: %s
+                Autor: %s
+                Descargas: %d
+                %n""",
+                    libro.getTitle(),
+                    libro.getAuthor(),
+                    libro.getDownload_count()));
+        } catch (Exception e) {
+            System.out.println("Ocurrió un error al obtener el top 10 de libros: " + e.getMessage());
+        }
+    }
+
+    private void buscarAutorPorNombre() {
+        System.out.println("Ingrese el nombre del autor a buscar:");
+        System.out.print("> ");
+        String nombreAutor = teclado.nextLine();
+
+        try {
+            // Consultar autores por nombre en la base de datos
+            List<Autor> autores = autorRepository.findByName(nombreAutor);
+
+            if (autores.isEmpty()) {
+                System.out.println("El autor no se encuentra en la base de datos. Buscando en la API...");
+
+                // Consultar la API
+                String urlFinal = url + "?search=" + URLEncoder.encode(nombreAutor, StandardCharsets.UTF_8);
+                var json = consumoAPI.obtenerDatos(urlFinal);
+
+                // Procesar el JSON y buscar autores
+                var rootNode = conversor.obtenerDatos(json, Map.class);
+                var results = (List<Map<String, Object>>) rootNode.get("results");
+
+                if (results == null || results.isEmpty()) {
+                    System.out.println("No se encontraron autores en la API con el nombre: " + nombreAutor);
+                    return;
+                }
+
+                // Extraer los datos de los autores y almacenarlos en la base de datos
+                for (var result : results) {
+                    var datosAutorJson = conversor.obtenerDatos(new ObjectMapper().writeValueAsString(result.get("authors")), DatosAutor[].class);
+
+                    for (DatosAutor datosAutor : datosAutorJson) {
+                        Autor autor = new Autor(datosAutor);
+
+                        if (!autorRepository.existsByName(autor.getName())) {
+                            autorRepository.save(autor);
+                            System.out.println("Autor guardado correctamente: " + autor.getName());
+                        } else {
+                            System.out.println("El autor ya existe en la base de datos: " + autor.getName());
+                        }
+                    }
+                }
+
+                // Volver a consultar en la base de datos
+                autores = autorRepository.findByName(nombreAutor);
+            }
+
+            // Mostrar los autores encontrados
+            if (autores.isEmpty()) {
+                System.out.println("No se encontraron autores con el nombre: " + nombreAutor);
+            } else {
+                System.out.println("Autores encontrados:");
+                autores.forEach(a -> System.out.printf("""
+                    Nombre: %s
+                    Año de nacimiento: %s
+                    Año de fallecimiento: %s
+                    %n""",
+                        a.getName(),
+                        a.getBirth_day() != null ? a.getBirth_day() : "Desconocido",
+                        a.getDeath_day() != null ? a.getDeath_day() : "Aún vivo"));
+            }
+        } catch (Exception e) {
+            System.out.println("Ocurrió un error al buscar el autor: " + e.getMessage());
+        }
+    }
+
+    private void listarAutoresPorAtributo() {
+        System.out.println("""
+            ¿Qué atributo deseas consultar?
+            1: Año de nacimiento
+            2: Año de fallecimiento
+            """);
+        System.out.print("> ");
+        int opcion = teclado.nextInt();
+        teclado.nextLine(); // Limpiar el buffer
+
+        System.out.println("Ingrese el año a consultar:");
+        System.out.print("> ");
+        int anio = teclado.nextInt();
+        teclado.nextLine(); // Limpiar el buffer
+
+        try {
+            List<Autor> autores = switch (opcion) {
+                case 1 -> autorRepository.findByBirthYear(anio);
+                case 2 -> autorRepository.findByDeathYear(anio);
+                default -> {
+                    System.out.println("Opción inválida. Volviendo al menú principal...");
+                    yield new ArrayList<>();
+                }
+            };
+
+            if (autores.isEmpty()) {
+                System.out.println("No se encontraron autores en el año especificado.");
+            } else {
+                System.out.println("Autores encontrados:");
+                autores.forEach(a -> System.out.printf("""
+                    Nombre: %s
+                    Año de nacimiento: %s
+                    Año de fallecimiento: %s
+                    %n""",
+                        a.getName(),
+                        a.getBirth_day() != null ? a.getBirth_day() : "Desconocido",
+                        a.getDeath_day() != null ? a.getDeath_day() : "Aún vivo"));
+            }
+        } catch (Exception e) {
+            System.out.println("Ocurrió un error al consultar los autores: " + e.getMessage());
         }
     }
 }
