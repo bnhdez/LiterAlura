@@ -174,6 +174,34 @@ public class Principal {
     }
 
     private void mostrarAutoresPorFecha() {
+        System.out.println("Ingrese el año para buscar autores que estaban vivos en ese periodo:");
+        System.out.print("> ");
+        int anio = teclado.nextInt();
+        teclado.nextLine(); // Limpiar el buffer
+
+        try {
+            // Llamar al repositorio para obtener los autores vivos en el año especificado
+            List<Autor> autoresVivos = autorRepository.findAuthorsAliveInYear(anio);
+
+            // Mostrar resultados
+            if (autoresVivos.isEmpty()) {
+                System.out.println("No se encontraron autores vivos en el año " + anio);
+            } else {
+                System.out.println("Autores vivos en el año " + anio + ":");
+                autoresVivos.forEach(a -> {
+                    System.out.printf("""
+                        Autor: %s
+                        Nacimiento: %s
+                        Fallecimiento: %s
+                        %n""",
+                            a.getName(),
+                            a.getBirth_day() != null ? a.getBirth_day() : "Desconocido",
+                            a.getDeath_day() != null ? a.getDeath_day() : "Aún vivo");
+                });
+            }
+        } catch (Exception e) {
+            System.out.println("Ocurrió un error al consultar los autores: " + e.getMessage());
+        }
     }
 
     private void mostrarPorIdiomas() {
