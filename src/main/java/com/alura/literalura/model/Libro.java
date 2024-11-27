@@ -17,10 +17,14 @@ public class Libro {
     public Libro(){}
 
     public Libro(DatosLibro datosLibro) {
-        this.title = datosLibro.title();
-        this.author = datosLibro.authors().get(0).name();
-        this.language = datosLibro.languages().get(0);
-        this.download_count = datosLibro.download_count();
+        this.title = datosLibro.title() != null ? datosLibro.title() : "Título desconocido";
+        this.author = (datosLibro.authors() != null && !datosLibro.authors().isEmpty())
+                ? datosLibro.authors().get(0).name()
+                : "Autor desconocido";
+        this.language = (datosLibro.languages() != null && !datosLibro.languages().isEmpty())
+                ? datosLibro.languages().get(0)
+                : "Idioma desconocido";
+        this.download_count = datosLibro.download_count() != null ? datosLibro.download_count() : 0;
     }
 
     public Long getId() {

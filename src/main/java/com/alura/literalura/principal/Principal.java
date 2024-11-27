@@ -8,9 +8,13 @@ import com.alura.literalura.repository.AutorRepository;
 import com.alura.literalura.repository.LibroRepository;
 import com.alura.literalura.service.ConsumoAPI;
 import com.alura.literalura.service.ConvierteDatos;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 public class Principal {
@@ -71,18 +75,50 @@ public class Principal {
         }
     }
 
-    private void mostrarPorIdiomas() {
-    }
+    private void buscarLibroPorNombre() {
+        System.out.println("Escribe el nombre del libro que desea buscar");
+        var nombreLibro = teclado.nextLine();
 
-    private void mostrarAutoresPorFecha() {
-    }
+        String urlFinal = url + "?search=" + URLEncoder.encode(nombreLibro, StandardCharsets.UTF_8);
+        System.out.println("URL construida: " + urlFinal);
 
-    private void mostrarAutoresRegistrados() {
+        var json = consumoAPI.obtenerDatos(urlFinal);
+        System.out.println("Respuesta JSON: " + json);
+
+        try {
+            // Deserializar la clave `results` como una lista de DatosLibro
+            var rootNode = conversor.obtenerDatos(json, Map.class);
+            var results = (List<Map<String, Object>>) rootNode.get("results");
+
+            if (results != null && !results.isEmpty()) {
+                for (var result : results) {
+                    // Convertir cada resultado individualmente a DatosLibro
+                    var datosLibroJson = conversor.obtenerDatos(new ObjectMapper().writeValueAsString(result), DatosLibro.class);
+                    Libro libro = new Libro(datosLibroJson);
+                    try {
+                        libroRepository.save(libro);
+                        System.out.println("Libro guardado correctamente: " + libro.getTitle());
+                    } catch (Exception e) {
+                        System.out.println("Error al guardar el libro: " + e.getMessage());
+                    }
+                }
+            } else {
+                System.out.println("No se encontraron libros para el término de búsqueda proporcionado.");
+            }
+        } catch (Exception e) {
+            System.out.println("Error al procesar los datos del JSON: " + e.getMessage());
+        }
     }
 
     private void mostrarLibrosRegistrados() {
     }
 
-    private void buscarLibroPorNombre() {
+    private void mostrarAutoresRegistrados() {
+    }
+
+    private void mostrarAutoresPorFecha() {
+    }
+
+    private void mostrarPorIdiomas() {
     }
 }
