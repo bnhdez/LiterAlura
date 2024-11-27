@@ -16,10 +16,10 @@ public class Autor {
     public Autor() {
     }
 
-    public Autor(AutorDatos autorDatos) {
-        this.name = autorDatos.name();
-        this.birth_day = autorDatos.birthday();
-        this.death_day = autorDatos.deathday();
+    public Autor(DatosAutor datosAutor) {
+        this.name = datosAutor.name();
+        this.birth_day = datosAutor.birthday();
+        this.death_day = datosAutor.deathday();
     }
 
 
